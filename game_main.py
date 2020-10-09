@@ -1,103 +1,101 @@
 import pygame
 
+from random import randrange as rnd
 
-def play():
-	done = True
-	ball_up = True
-	ball_left = True
-	pygame.key.set_repeat(1, 1)
 
-	
-	while done:
+def detect_collision(dx, dy, ball, rect):
+    if dx > 0:
+        delta_x = ball.right - rect.left
+    else:
+        delta_x = rect.right - ball.left
+    if dy > 0:
+        delta_y = ball.bottom - rect.top
+    else:
+        delta_y = rect.bottom - ball.top
 
-	    for event in pygame.event.get():
-	        if event.type == pygame.QUIT:
-	            done = False
+    if abs(delta_x - delta_y) < 10:
+        dx, dy = -dx, -dy
+    elif delta_x > delta_y:
+        dy = -dy
+    elif delta_y > delta_x:
+        dx = -dx
+    return dx, dy
 
-	        if event.type == pygame.KEYDOWN:
-	            if event.key == pygame.K_RIGHT:
-	                if platform.x < (window_size - plat_long):
-	                    platform.x += 1
-	            if event.key == pygame.K_LEFT:
-	                if platform.x > 0:
-	                    platform.x -= 1
-	           
-	        
 
-	    if ball.y < 180:
-	        for i in range(65):
+def game(count=0, level=1):
+    background = pygame.Surface((1200, 800))
+    background.fill((0, 255, 0))
+    WIDTH, HEIGHT = 1200, 800
+    fps = 60
+    # paddle settings
+    paddle_w = 330
+    paddle_h = 35
+    paddle_speed = 15
+    paddle = pygame.Rect(WIDTH // 2 - paddle_w // 2, HEIGHT - paddle_h - 10, paddle_w, paddle_h)
+    # ball settings
+    ball_radius = 10
+    ball_speed = 6
+    ball_rect = int(ball_radius * 2 ** 0.5)
+    ball = pygame.Rect(rnd(ball_rect, WIDTH - ball_rect), HEIGHT // 2, ball_rect, ball_rect)
+    dx, dy = 1, -1
+    # blocks settings
+    block_list = [pygame.Rect(120 * i, 70 * j, 100, 50) for i in range(10) for j in range(4)]
+    color_list = [(rnd(30, 256), rnd(30, 256), rnd(30, 256)) for i in range(10) for j in range(4)]
 
-	            if ball_square_45(ball.x, ball.y, Square_Array[i].x, Square_Array[i].y):
-	                Square_Array[i].x = -square_size
-	                Square_Array[i].y = -square_size
-	                count += 1
-	                ball_up = True
+    pygame.init()
+    sc = pygame.display.set_mode((WIDTH, HEIGHT))
+    clock = pygame.time.Clock()
+    # background image
+    #img = pygame.image.load('1.jpg').convert()
 
-	            if ball_square_down(ball.x, ball.y, Square_Array[i].x, Square_Array[i].y):
-	                    Square_Array[i].x = -square_size
-	                    Square_Array[i].y = -square_size
-	                    count += 1
-	                    ball_up = True
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                exit()
+        sc.blit(background, (0, 0))
 
-	            if ball_square_left(ball.x, ball.y, Square_Array[i].x, Square_Array[i].y):
-	                Square_Array[i].x = -square_size
-	                Square_Array[i].y = -square_size
-	                count += 1
-	                ball_left = True
-	                ball_up = False
+        # drawing world
+        [pygame.draw.rect(sc, color_list[color], block) for color, block in enumerate(block_list)]
 
-	            if ball_square_right(ball.x, ball.y, Square_Array[i].x, Square_Array[i].y):
-	                Square_Array[i].x = -square_size
-	                Square_Array[i].y = -square_size
-	                count += 1
-	                ball_left = False
-	                ball_up = False
+        pygame.draw.rect(sc, pygame.Color('darkorange'), paddle)
+        pygame.draw.circle(sc, pygame.Color('black'), ball.center, ball_radius)
+        # ball movement
+        ball.x += ball_speed * dx
+        ball.y += ball_speed * dy
+        # collision left right
+        if ball.centerx < ball_radius or ball.centerx > WIDTH - ball_radius:
+            dx = -dx
+        # collision top
+        if ball.centery < ball_radius:
+            dy = -dy
+        # collision paddle
+        if ball.colliderect(paddle) and dy > 0:
+            dx, dy = detect_collision(dx, dy, ball, paddle)
 
-	            if ball_square_up(ball.x, ball.y, Square_Array[i].x, Square_Array[i].y):
-	                Square_Array[i].x = -square_size
-	                Square_Array[i].y = -square_size
-	                count += 1
-	                ball_up = False
+        # collision blocks
+        hit_index = ball.collidelist(block_list)
+        if hit_index != -1:
+            hit_rect = block_list.pop(hit_index)
+            hit_color = color_list.pop(hit_index)
+            dx, dy = detect_collision(dx, dy, ball, hit_rect)
+            fps += 2
+            count +=1
+        # win, game over
+        if ball.bottom > HEIGHT:
+            break
+        elif not len(block_list):
+            print('WIN!!!')
+            game(count)
+        # control
+        key = pygame.key.get_pressed()
+        if key[pygame.K_LEFT] and paddle.left > 0:
+            paddle.left -= paddle_speed
+        if key[pygame.K_RIGHT] and paddle.right < WIDTH:
+            paddle.right += paddle_speed
+        # update screen
+        pygame.display.flip()
+        clock.tick(fps)
 
-	    if ball.y < 0:
-	        ball_up = True
-	    if ball.y > window_size - plat_high - ball_size:
+    return count
 
-	        if ball_plat(platform.x, platform.y, ball.x, ball.y):
-	            ball_up = False
-	            ball.y -= 1
-	            if ball.y < 0:
-	                ball_up = True
-	            if ball_left:
-	                ball.x += 1
-	                if ball.x > (window_size - ball_size):
-	                    ball_left = False
-	            else:
-	                ball.x -= 1
-	                if ball.x < 0:
-	                    ball_left = True
 
-	        else:
-	            done = False
-	    if ball_up:
-	        ball.y += 1
-	        if ball.y > window_size:
-	            ball_up = False
-	    else:
-	        ball.y -= 1
-	    if ball_left:
-	        ball.x += 1
-	        if ball.x > (window_size - ball_size):
-	            ball_left = False
-	    else:
-	        ball.x -= 1
-	        if ball.x < 0:
-	            ball_left = True
-
-    screen.fill((0, 0, 0))
-    square_render()
-    ball.render()
-    platform.render()
-    window.blit(screen, (0, 0))
-    pygame.display.flip()
-    pygame.time.delay(p)
